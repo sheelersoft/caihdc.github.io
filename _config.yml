@@ -1,6 +1,5 @@
-<<<<<<< HEAD
 theme: jekyll-theme-cayman
-=======
+
 #
 # This file contains configuration flags to customize your site
 #
@@ -87,6 +86,3 @@ exclude:
   - LICENSE
   - README.md
   - CNAME
-
-theme: jekyll-theme-cayman
->>>>>>> f3eb26da3781d1c5889845fff2eddb34d45c0df8
