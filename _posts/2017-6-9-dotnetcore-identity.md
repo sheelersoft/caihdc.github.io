@@ -12,7 +12,9 @@ To follow along, you'll need to have .NET Core installed. I'll also be using Vis
 ## Create ASP.NET Core project
 To create the project, first you'll need to navigate into the folder you want to create it in. For me, this was /coreapitest/server
 
-`...> cd coreapitest/server`
+```
+...> cd coreapitest/server
+```
 
 Then you should execute the command to create a new ASP.NET Core project with the web api template. This will give us some basic set up and a values controller we'll use for testing later.
 
@@ -40,9 +42,101 @@ Before any coding is done, there are a few nuget packages that need to be added.
 ```
 After this is added, save the file, and run dotnet restore on the project. This pulls down any new packages you added.
 
-`coreapitest/server> dotnet restore`
+```
+coreapitest/server> dotnet restore
+```
 
-## IdentityContext and IdentityData
+## IdentityContext
+The first thing to do is create the IdentityContext class. This an EF Core db context that will be used to set up the Identity providers in the Startup class. Don't worry about creating a database as you can use the In Memory Database Provider for testing. Normally, the context classes would be seperated into some sort of domain layer but for this example just create the IdentityContext.cs file in the root of the project. The class is simple and it's using all build in classes like IdentityUser.
+
+```c#
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using System;
+
+namespace coreapitest.api
+{
+    public class IdentityContext : IdentityDbContext<IdentityUser>
+    {
+        public IdentityContext(DbContextOptions<IdentityContext> options)
+            : base(options)
+        {
+        }
+    }
+}
+```
+
+## IdentityData
+After IdentityContext is created, the next thing to do is create the IdentityData class. This class is not actually required to use Identity but it is useful for testing once everything is finished. All this class is really doing is getting the IdentityContext, creating a user, and assigning it a role.
+
+```c#
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace coreapitest.api
+{
+    public class IdentityData
+    {
+        public static void Initialize(IServiceProvider serviceProvider)
+        {
+            var context = serviceProvider.GetService<IdentityContext>();
+
+            string[] roles = new string[] { "Administrator", "Customer" };
+
+            foreach (string role in roles)
+            {
+                var roleStore = new RoleStore<IdentityRole>(context);
+
+                if (!context.Roles.Any(r => r.Name == role))
+                {
+                    roleStore.CreateAsync(new IdentityRole(role) { NormalizedName = role.ToUpper() }).Wait();
+                }
+            }
+
+            var user = new IdentityUser
+            {
+                Email = "test@test.com",
+                NormalizedEmail = "TEST@TEST.COM",
+                UserName = "Admin",
+                NormalizedUserName = "ADMIN",
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true,
+                SecurityStamp = Guid.NewGuid().ToString("D")
+            };
+
+
+            if (!context.Users.Any(u => u.UserName == user.UserName))
+            {
+                var password = new PasswordHasher<IdentityUser>();
+                var hashed = password.HashPassword(user,"password");
+                user.PasswordHash = hashed;
+
+                var userStore = new UserStore<IdentityUser>(context);
+                userStore.CreateAsync(user).Wait();
+            }
+
+            context.SaveChanges();
+
+            AssignRoles(serviceProvider, user.Email, new string[] { "Administrator" }).Wait();
+
+            context.SaveChanges();
+        }
+
+        public static async Task<IdentityResult> AssignRoles(IServiceProvider services, string email, string[] roles)
+        {
+            UserManager<IdentityUser> _userManager = services.GetService<UserManager<IdentityUser>>();
+            IdentityUser user = await _userManager.FindByEmailAsync(email);
+            var result = await _userManager.AddToRolesAsync(user, roles);
+
+            return result;
+        }
+    }
+}
+```
 
 ## Startup
 
