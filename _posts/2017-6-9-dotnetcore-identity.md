@@ -10,16 +10,16 @@ This post will go over the process of setting up an ASP.NET Core Web Api project
 To follow along, you'll need to have .NET Core installed. I'll also be using Visual Studio Code as my editor and terminal which I recommend for anyone trying this out. Finally, I'll be using Postman to test the api after it is set up.
 
 ## Create ASP.NET Core project
-To create the project, first you'll need to navigate into the folder you want to create it in. For me, this was /coreapitest/server
+To create the project, first you'll need to navigate into the folder you want to create it in. For me, this was /coreapitest/server/coreapitest.api
 
 ```
-...> cd coreapitest/server
+...> cd coreapitest/server/coreapitest.api
 ```
 
 Then you should execute the command to create a new ASP.NET Core project with the web api template. This will give us some basic set up and a values controller we'll use for testing later.
 
 ```
-coreapitest/server> dotnet new webapi
+coreapitest/server/coreapitest.api> dotnet new webapi
 ```
 
 After this is finished you should see some scaffolding in your root folder. Double check to make sure a ValuesController.cs file was created in the Controllers folder and the Startup.cs file was also created.
@@ -43,7 +43,7 @@ Before any coding is done, there are a few nuget packages that need to be added.
 After this is added, save the file, and run dotnet restore on the project. This pulls down any new packages you added.
 
 ```
-coreapitest/server> dotnet restore
+coreapitest/server/coreapitest.api> dotnet restore
 ```
 
 ## IdentityContext
@@ -54,7 +54,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using System;
 
-namespace coreapitest.api
+namespace yournamespace
 {
     public class IdentityContext : IdentityDbContext<IdentityUser>
     {
@@ -77,7 +77,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace coreapitest.api
+namespace yournamespace
 {
     public class IdentityData
     {
@@ -93,7 +93,10 @@ namespace coreapitest.api
 
                 if (!context.Roles.Any(r => r.Name == role))
                 {
-                    roleStore.CreateAsync(new IdentityRole(role) { NormalizedName = role.ToUpper() }).Wait();
+                    roleStore.CreateAsync(new IdentityRole(role) 
+                    { 
+                        NormalizedName = role.ToUpper() 
+                    }).Wait();
                 }
             }
 
@@ -126,7 +129,10 @@ namespace coreapitest.api
             context.SaveChanges();
         }
 
-        public static async Task<IdentityResult> AssignRoles(IServiceProvider services, string email, string[] roles)
+        public static async Task<IdentityResult> AssignRoles(
+            IServiceProvider services,
+             string email, 
+             string[] roles)
         {
             UserManager<IdentityUser> _userManager = services.GetService<UserManager<IdentityUser>>();
             IdentityUser user = await _userManager.FindByEmailAsync(email);
@@ -139,6 +145,110 @@ namespace coreapitest.api
 ```
 
 ## Startup
+Now, time for the important stuff. Startup is where all the services and providers for the app get configured along with the request pipeline. The first thing to do is update the ConfigureServices method to configure the IdentityContext and to add the IdentityProviders. Note: there are other things added here that might not necessarily be needed for this example. Note 2: The AuthorizationPolicyBuilder is just setting up our api so that each api method requires Authorize by default and to allow anonymous the AllowAnonymousAttribute needs to be added.
+
+```c#
+    // This method gets called by the runtime. Use this method to add services to the container.
+    public void ConfigureServices(IServiceCollection services)
+    {
+        // Add framework services.
+        services.AddLogging();       
+        // Add the Identity Context
+        services.AddDbContext<IdentityContext>(opt => opt.UseInMemoryDatabase());
+        services.AddSingleton<IConfigurationRoot>(Configuration);
+        // Add the Identity providers
+        services.AddIdentity<IdentityUser, IdentityRole>()
+            .AddEntityFrameworkStores<IdentityContext>()
+            .AddDefaultTokenProviders();
+        services.AddMvc(config => 
+        {
+            var policy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
+            config.Filters.Add(new AuthorizeFilter(policy));
+        });
+    }
+``` 
+
+After that, the Congifure method needs to be updated to initialize our IdentityData class and to tell the app to actually use Identity.
+
+```c#
+    // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+    public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+    {
+        loggerFactory.AddConsole(Configuration.GetSection("Logging"));
+        loggerFactory.AddDebug();
+        IdentityData.Initialize(app.ApplicationServices);
+        app.UseIdentity();
+        app.UseMvc();
+    }
+```
+
+Here is the code for the whole Startup.cs file:
+
+```c#
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.Authorization;
+
+namespace coreapitest.api
+{
+    public class Startup
+    {
+        public Startup(IHostingEnvironment env)
+        {
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(env.ContentRootPath)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
+                .AddEnvironmentVariables();
+            Configuration = builder.Build();
+        }
+
+        public IConfigurationRoot Configuration { get; }
+
+        // This method gets called by the runtime. Use this method to add services to the container.
+        public void ConfigureServices(IServiceCollection services)
+        {
+            // Add framework services.
+            services.AddLogging();       
+            services.AddDbContext<IdentityContext>(opt => opt.UseInMemoryDatabase());     
+            services.AddSingleton<IConfigurationRoot>(Configuration);
+            services.AddIdentity<IdentityUser, IdentityRole>()
+                .AddEntityFrameworkStores<IdentityContext>()
+                .AddDefaultTokenProviders();
+            services.AddMvc(config => 
+            {
+                var policy = new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .Build();
+                config.Filters.Add(new AuthorizeFilter(policy));
+            });
+        }
+
+        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        {
+            loggerFactory.AddConsole(Configuration.GetSection("Logging"));
+            loggerFactory.AddDebug();
+            IdentityData.Initialize(app.ApplicationServices);
+            app.UseIdentity();
+            app.UseMvc();
+        }
+    }
+}
+```
 
 ## AuthController
 
