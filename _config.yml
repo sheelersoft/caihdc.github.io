@@ -5,11 +5,11 @@ theme: jekyll-theme-cayman
 #
 
 # Name of your site (displayed in the header)
-name: CAI HDC
-title: CAI HDC
+name: sheelersoft
+title: sheelersoft
 
 # Short bio or description (displayed in the header)
-description: CAI HDC Developers
+description: Software Development
 
 #
 # Flags below are optional
@@ -21,7 +21,7 @@ footer-links:
   email:
   facebook:
   flickr:
-  github: caihdc/caihdc.github.io
+  github: sheelersoft/sheelersoft.github.io
   instagram:
   linkedin:
   pinterest:
