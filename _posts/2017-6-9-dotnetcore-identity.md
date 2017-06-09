@@ -16,7 +16,9 @@ To create the project, first you'll need to navigate into the folder you want to
 
 Then you should execute the command to create a new ASP.NET Core project with the web api template. This will give us some basic set up and a values controller we'll use for testing later.
 
-`coreapitest/server> dotnet new webapi`
+```
+coreapitest/server> dotnet new webapi
+```
 
 After this is finished you should see some scaffolding in your root folder. Double check to make sure a ValuesController.cs file was created in the Controllers folder and the Startup.cs file was also created.
 
