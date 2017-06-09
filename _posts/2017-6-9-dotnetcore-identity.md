@@ -382,43 +382,61 @@ This should start the app and be listening on localhost:5000. Now that the app i
 
 #### First, send a request to an endpoint that does not requre auth.
 
+```
 Get: localhost:5000/api/values
+```
 
 The response should be a 200 with some data.
 
 #### Next, try sending a request to an endpoint that does require auth.
 
+```
 Post: localhost:5000/api/values
+```
 
+```
 Body: { "value": "woooooooooooooooooo" }
+```
 
 This request should fail, possibly with a 404.
 
 #### Now send a login request. The response to this, if successful, will contain a cookie which will be used to authenticate later. This also uses the test user we created earlier. Note: In a real app you probably would not want the password in the url.
 
+```
 Post: localhost:5000/api/auth/admin/password
+```
 
 The reponse should be a 200.
 
 #### Try the endpoint that requres auth again.
 
+```
 Post: localhost:5000/api/values
+```
 
+```
 Body: { "value": "woooooooooooooooooo" }
+```
 
 #### This time it should succeed with a 200, showing that the login worked.
 
 Now logout
 
-localhost:5000/api/auth/logout
+```
+Get: localhost:5000/api/auth/logout
+```
 
 The reponse should be a 200.
 
 ### Try the endpoint that requres auth again.
 
+```
 Post: localhost:5000/api/values
+```
 
+```
 Body: { "value": "woooooooooooooooooo" }
+```
 
 This time it should fail, showing that the logout worked.
 
