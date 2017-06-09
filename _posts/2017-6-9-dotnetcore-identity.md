@@ -13,7 +13,7 @@ To follow along, you'll need to have .NET Core installed. I'll also be using Vis
 To create the project, first you'll need to navigate into the folder you want to create it in. For me, this was /coreapitest/server/coreapitest.api
 
 ```
-...> cd coreapitest/server/coreapitest.api
+> cd coreapitest/server/coreapitest.api
 ```
 
 Then you should execute the command to create a new ASP.NET Core project with the web api template. This will give us some basic set up and a values controller we'll use for testing later.
@@ -255,7 +255,156 @@ namespace yournamespace
 ```
 
 ## AuthController
+The AuthController will be the api controller that allows a user to login and logout from the client. It will have the Identity providers injected into the contstructors which will then be used to perform the login / logout logic. Since earlier I configured every controller to use Authorize by default, I had to AllowAnonymous on the Login method. It's pretty straightforward so here is the code.
+
+```c#
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+
+namespace yournamespace.Controllers
+{
+    [Route("api/[controller]")]
+    public class AuthController : Controller
+    {
+        private readonly SignInManager<IdentityUser> _signInManager;
+        private UserManager<IdentityUser> _userManager;
+
+        public AuthController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
+        {
+            _userManager = userManager;
+            _signInManager = signInManager;
+        }
+
+        [HttpPost("{username}/{password}/{rememberMe?}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Login(string username, string password, bool rememberMe = false)
+        {
+            var user = await _userManager.FindByNameAsync(username);
+            if (user == null)
+            {
+                return NotFound(username);
+            }
+
+            var signInResult = await this._signInManager.PasswordSignInAsync(user, password, rememberMe, lockoutOnFailure: false);
+            
+            if (signInResult.Succeeded)
+            {
+                return Ok();
+            }
+
+            return Unauthorized();
+        }
+
+        [HttpGet("logout")]        
+        public async Task<IActionResult> Logout()
+        {
+            await this._signInManager.SignOutAsync();
+
+            return Ok();
+        }
+    }
+}
+```
 
 ## ValuesController
+The ValuesController that is created with the Web Api template will be used to test the Identity providers and the login / logout methods. The only thing to change here is to either have a method or two allow anonymous or to add the Authorize attribute if you removed the code that configured the controllers to have Authorize on by default. Here is what my controller looks like and is what the Testing section assumes.
+
+```c#
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+
+namespace yournamespace.Controllers
+{
+    [Route("api/[controller]")]
+    public class ValuesController : Controller
+    {
+        private UserManager<IdentityUser> _userManager;
+        public ValuesController(UserManager<IdentityUser> userManager)
+        {
+            _userManager = userManager;
+        }
+
+        // GET api/values
+        [HttpGet]
+        [AllowAnonymous]
+        public IEnumerable<string> Get()
+        {
+            return new string[] { "value1", "value2" };
+        }
+
+        // GET api/values/5
+        [HttpGet("{id}")]
+        public string Get(int id)
+        {
+            return "value";
+        }
+
+        // POST api/values
+        [HttpPost, Authorize]
+        public void Post([FromBody]string value)
+        {
+            var user = _userManager.GetUserAsync(User);
+        }
+
+        // PUT api/values/5
+        [HttpPut("{id}")]
+        public void Put(int id, [FromBody]string value)
+        {
+        }
+
+        // DELETE api/values/5
+        [HttpDelete("{id}")]
+        public void Delete(int id)
+        {
+        }
+    }
+}
+```
 
 ## Testing
+Using Postman, the api can be tested by sending requests to the end points. The first thing to do is run the app.
+
+```
+coreapitest/server/coreapitest.api> dotnet run
+```
+
+This should start the app and be listening on localhost:5000. Now that the app is running requests can be sent to the endpoints.
+
+First, send a request to an endpoint that does not requre auth.
+Get: localhost:5000/api/values
+The response should be a 200 with some data.
+
+Next, try sending a request to an endpoint that does require auth.
+Post: localhost:5000/api/values
+Body: { "value": "woooooooooooooooooo" }
+This request should fail, possibly with a 404.
+
+Now send a login request. The response to this, if successful, will contain a cookie which will be used to authenticate later. This also uses the test user we created earlier. Note: In a real app you probably would not want the password in the url.
+Post: localhost:5000/api/auth/admin/password
+The reponse should be a 200.
+
+Try the endpoint that requres auth again.
+Post: localhost:5000/api/values
+Body: { "value": "woooooooooooooooooo" }
+This time it should succeed with a 200, showing that the login worked.
+
+Now logout
+localhost:5000/api/auth/logout
+The reponse should be a 200.
+
+Try the endpoint that requres auth again.
+Post: localhost:5000/api/values
+Body: { "value": "woooooooooooooooooo" }
+This time it should fail, showing that the logout worked.
+
+Note: Postman included the cookies returned by the server automatically in the later requests which is similar to what a web browser does. If your login does not seem to work or the requests after login don't work, make sure to check the cookies passed with the request.
