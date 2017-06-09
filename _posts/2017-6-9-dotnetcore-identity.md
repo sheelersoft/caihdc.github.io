@@ -1,31 +1,31 @@
 ---
 layout: post
-title: ASP.NET Core - Identity
+title: ASP.NET Core - Simple Identity
 ---
 
 ## Overview
-This post will go over the process of setting up an ASP.NET Core Web Api project to use the built in Identity solution. It will show how to set up the code and give examples of it working in action.
+This post will go over the process of setting up an ASP.NET Core Web Api project. It will also cover configuring the project to use the built in Identity providers. When it's done there will be some examples of it working in action.
 
 ## Installation
-To follow along, you'll need to have .NET Core installed. I'll also be using Visual Studio Code as my editor and terminal which I recommend for anyone trying this out. Finally, I'll be using Postman to test the api after it is set up.
+To follow along, you'll need to have [.NET Core](https://www.microsoft.com/net/core#windowsvs2017) installed. I'll also be using [Visual Studio Code](https://code.visualstudio.com/) as my editor and terminal which I recommend for anyone trying this out. Finally, I'll be using [Postman](https://www.getpostman.com/) to test the api after it is set up.
 
 ## Create ASP.NET Core project
-To create the project, first you'll need to navigate into the folder you want to create it in. For me, this was /coreapitest/server/coreapitest.api
+To create the project, first navigate into the folder you want to create the app in. For me, this was /coreapitest/server/coreapitest.api
 
 ```
 > cd coreapitest/server/coreapitest.api
 ```
 
-Then you should execute the command to create a new ASP.NET Core project with the web api template. This will give us some basic set up and a values controller we'll use for testing later.
+Then you should execute the command to create a new ASP.NET Core project with the Web Api template. This will give us some basic set up and a values controller that will be used for testing later.
 
 ```
 coreapitest/server/coreapitest.api> dotnet new webapi
 ```
 
-After this is finished you should see some scaffolding in your root folder. Double check to make sure a ValuesController.cs file was created in the Controllers folder and the Startup.cs file was also created.
+After the project is created, there should be some scaffolding in the root folder. Double check to make sure a ValuesController.cs file was created in the Controllers folder and the Startup.cs file was also created. These will be needed later.
 
 ## Nuget Packages
-Before any coding is done, there are a few nuget packages that need to be added. Open your .csproj file and make sure the Package Reference Item Group has the following packages.
+Before any coding is done, there are a few nuget packages that need to be added. Open the .csproj file and make sure the Package Reference Item Group has the following packages.
 
 ```xml
   <ItemGroup>
@@ -40,14 +40,14 @@ Before any coding is done, there are a few nuget packages that need to be added.
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="1.1.2" />
   </ItemGroup>
 ```
-After this is added, save the file, and run dotnet restore on the project. This pulls down any new packages you added.
+After this is added, save the file, and run dotnet restore on the project. This pulls down any new packages that were added.
 
 ```
 coreapitest/server/coreapitest.api> dotnet restore
 ```
 
 ## IdentityContext
-The first thing to do is create the IdentityContext class. This an EF Core db context that will be used to set up the Identity providers in the Startup class. Don't worry about creating a database as you can use the In Memory Database Provider for testing. Normally, the context classes would be seperated into some sort of domain layer but for this example just create the IdentityContext.cs file in the root of the project. The class is simple and it's using all build in classes like IdentityUser.
+The first thing that needs to be done is creating the IdentityContext class. This an EF Core database context that will be used to set up the Identity providers in the Startup class. Don't worry about creating a database as In Memory Database Provider can be used for testing. Normally, the context classes would be seperated into some sort of domain layer but for this example just create the IdentityContext.cs file in the root of the project. The class is simple and it's using all built in classes like IdentityUser.
 
 ```c#
 using Microsoft.EntityFrameworkCore;
@@ -145,7 +145,7 @@ namespace yournamespace
 ```
 
 ## Startup
-Now, time for the important stuff. Startup is where all the services and providers for the app get configured along with the request pipeline. The first thing to do is update the ConfigureServices method to configure the IdentityContext and to add the IdentityProviders. Note: there are other things added here that might not necessarily be needed for this example. Note 2: The AuthorizationPolicyBuilder is just setting up our api so that each api method requires Authorize by default and to allow anonymous the AllowAnonymousAttribute needs to be added.
+Now, time for the important stuff. Startup is the class where all the services, providers and request pipeline for the app get configured. The first thing to do is update the ConfigureServices method, which sets up Dependency Injection to add the IdentityContext and the IdentityProviders. Note: there are other things added here that might not necessarily be needed for this example. Note 2: The AuthorizationPolicyBuilder is just setting up the api so that each api method requires Authorize by default and to allow anonymous the AllowAnonymousAttribute needs to be added.
 
 ```c#
     // This method gets called by the runtime. Use this method to add services to the container.
@@ -170,7 +170,7 @@ Now, time for the important stuff. Startup is where all the services and provide
     }
 ``` 
 
-After that, the Congifure method needs to be updated to initialize our IdentityData class and to tell the app to actually use Identity.
+After that, the Configure method needs to be updated to initialize our IdentityData class and to tell the app to actually use Identity.
 
 ```c#
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -255,7 +255,7 @@ namespace yournamespace
 ```
 
 ## AuthController
-The AuthController will be the api controller that allows a user to login and logout from the client. It will have the Identity providers injected into the contstructors which will then be used to perform the login / logout logic. Since earlier I configured every controller to use Authorize by default, I had to AllowAnonymous on the Login method. It's pretty straightforward so here is the code.
+The AuthController will be the api controller that allows a user to login and logout from the client. It will have the Identity providers injected into the contstructor which will then be used to perform the login / logout logic. Since earlier I configured every controller to use Authorize by default, I had to AllowAnonymous on the Login method. It's pretty straightforward so here is the code.
 
 ```c#
 using Microsoft.AspNetCore.Mvc;
@@ -310,7 +310,7 @@ namespace yournamespace.Controllers
 ```
 
 ## ValuesController
-The ValuesController that is created with the Web Api template will be used to test the Identity providers and the login / logout methods. The only thing to change here is to either have a method or two allow anonymous or to add the Authorize attribute if you removed the code that configured the controllers to have Authorize on by default. Here is what my controller looks like and is what the Testing section assumes.
+The ValuesController that is created with the Web Api template will be used to test the Identity providers and the login / logout methods. The only thing to change here is to have a method that allows anonymous (for testing). Here is what my controller looks like and is what the Testing section assumes.
 
 ```c#
 using System;
@@ -400,7 +400,7 @@ Body: { "value": "woooooooooooooooooo" }
 
 This request should fail, possibly with a 404.
 
-### Now send a login request. The response to this, if successful, will contain a cookie which will be used to authenticate later. This also uses the test user we created earlier. Note: In a real app you probably would not want the password in the url.
+### Now send a login request. The response to this, if successful, will contain a cookie which will be used to authenticate later. This also uses the test user we created earlier. Note: A real app probably would not have the password in the url.
 
 ```
 Post: localhost:5000/api/auth/admin/password
@@ -440,4 +440,4 @@ Body: { "value": "woooooooooooooooooo" }
 
 This time it should fail, showing that the logout worked.
 
-Note: Postman included the cookies returned by the server automatically in the later requests which is similar to what a web browser does. If your login does not seem to work or the requests after login don't work, make sure to check the cookies passed with the request.
+Note: Postman included the cookies returned by the server automatically in the later requests which is similar to what a web browser does. If the login request does not seem to work or the requests after login don't work, make sure to check the cookies passed with the request.
