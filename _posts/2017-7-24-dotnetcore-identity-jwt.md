@@ -7,7 +7,7 @@ title: ASP.NET Core - Identity with JWT
 This post will go over the process of setting up an ASP.NET Core project to use the Identity providers with Json Web Tokens (JWT) instead of the default cookie based approach. It will also make use of Claims Identity and allow for role based authorization. I'll assume some background knowledge on how ASP.NET Core and Identity works. Please see [the docs](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity) or [my previous blog post](https://sheelersoft.github.io/dotnetcore-identity/) for more information. For examples, check out the [Angular Template](https://github.com/sheelersoft/angulartemplate) code on github.com. The information in this post is pulled from that project.
 
 ## Nuget Packages
-Below are the packages in my .csproj file. Some of them won't really be used directly in this post like AutoMapper and FluentValidation but if you have any reference issues you can refer to this list.
+Below are the packages in my .csproj file. Some of them might not be used directly in this post but if you have any reference issues you can refer to this list.
 
 ```xml
 <PackageReference Include="Microsoft.AspNetCore" Version="1.1.0" />
@@ -31,12 +31,11 @@ Below are the packages in my .csproj file. Some of them won't really be used dir
 ```
 
 ## App Settings
-The first step is to add a configuration section to the appsettings.json file. These settings will be used be used by the JWT code to generate the token. You can customize the settings to fit your needs.
+The first thing to do is to add a configuration section to the appsettings.json file. These settings will be used be used by the JWT code to generate the token. These settings can be customized to fit the needs of your project.
 
 ```json
 "Logging": {
-    ...
-}
+
 },
 "JwtIssuerOptions": {
 "Issuer": "myproject",
@@ -45,7 +44,7 @@ The first step is to add a configuration section to the appsettings.json file. T
 ```
 
 ## JWT Factory
-The JWT Factory will be used to generate the token and the claims identity. Eventually, this will be called from the Auth Controller.
+The JWT Factory will be used to generate the token and the claims identity. Eventually, this will be called from the Auth Controller during login.
 
 The implementation for this class can be found on [github.](https://github.com/sheelersoft/AngularTemplate/blob/master/content/Service/jssAngular.Service/Auth/JwtFactory.cs) Here is the interface:
 
@@ -57,13 +56,13 @@ public interface IJwtFactory
 }
 ```
 
-The logic for the JWT Factory is pretty straight forward. GenerateEncodedToken generates the token and GenerateClaimsIdentity generates the claims identity (duh). One feature of GenerateClaimsIdentity is that it adds a Claim called Role which gets set to the AppUsers role. In combination with an Authorization Policy that will be set up later, this allows us to use the Authorize attribute using roles on controllers.
+The logic for the JWT Factory is pretty straight forward. GenerateEncodedToken generates the token and GenerateClaimsIdentity generates the claims identity (duh). One feature of GenerateClaimsIdentity is that it adds a Claim called Role which gets set as the AppUsers role. This, in combination with an Authorization Policy that will be set up later, allows the Authorize attribute to be used with roles on controllers.
 
 The AppUser is whatever user class you're using for Authentication / Authorization. You can learn more about setting up your Identity classes [here](http://sheelersoft.com/dotnetcore-identity/).
 
 
 ## Startup
-Next, we'll have to wire up the services and tell the app to use the JWT Authentication. This all happens in [Startup.cs.](https://github.com/sheelersoft/AngularTemplate/blob/master/content/Web/jssAngular/Startup.cs) The first thing to do here is setup the signing key for the token. Include the following code snippet in the Startup class to get started. This is not secure so be sure not to deploy this to production or anything.
+Next, we'll have to wire up the services and tell the app to use the JWT Authentication. This all happens in [Startup.cs.](https://github.com/sheelersoft/AngularTemplate/blob/master/content/Web/jssAngular/Startup.cs) The first thing to do here is setup the signing key for the token. Include the following code snippet in the Startup class to get started. This is not secure so be sure not to deploy this to production.
 
 ```c#
 private const string SecretKey = "iNivDmHLpUA223sqsfhqGbMRdRj1PVkH"; // todo: get this from somewhere secure
@@ -71,7 +70,7 @@ private readonly SymmetricSecurityKey _signingKey = new SymmetricSecurityKey(Enc
 ```
 
 ### Configure Services
-ConfigureServices is where we setup the services for Dependency Injection. It's also where the Admin Authorize Policy is added tell the app to look for the Admin Role claim. This is what my method looks like once everything is set up.
+Configure Services is where the services get configured for Dependency Injection. It's also where the Admin Authorize Policy is added tell the app to look for the Admin Role claim. This is what my method looks like once everything is set up.
 
 ```c#
 public void ConfigureServices(IServiceCollection services)
@@ -113,7 +112,7 @@ public void ConfigureServices(IServiceCollection services)
 ```
 
 ### Configure
-The Configure method is used to configure the HTTP request pipeline. This is where we'll tell the app to authenticate users using the JWT. Here's the method with everything wired up.
+The Configure method is used to configure the HTTP request pipeline. This is the app get configured to authenticate users using the JWT. Here's the method with everything wired up.
 
 ```c#
 public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
