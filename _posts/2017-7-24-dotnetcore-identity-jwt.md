@@ -1,6 +1,7 @@
 ---
 layout: post
 title: ASP.NET Core - Identity with JWT
+author: Ben Sheeler
 ---
 
 ## Overview

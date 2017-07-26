@@ -1,6 +1,7 @@
 ---
 layout: post
 title: ASP.NET Core - Simple Identity
+author: Ben Sheeler
 ---
 
 ## Overview
